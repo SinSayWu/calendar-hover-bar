@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calendar Hover Bar</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Collapsed arrow tab -->
+  <div id="arrow" class="arrow" title="Calendar — hover to expand, drag to move">
+    <svg class="chevron" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span id="arrowDot" class="arrow-dot" hidden></span>
+  </div>
+
+  <!-- Collapsed "up next" meeting bar (replaces the arrow when a meeting is imminent) -->
+  <div id="meetBar" class="meet-bar" title="Upcoming meeting — hover to expand" hidden></div>
+
+  <!-- Expandable panel -->
+  <div id="panel" class="panel" aria-hidden="true">
+    <div class="panel-head">
+      <div class="head-left">
+        <span id="headTitle">Upcoming</span>
+        <span id="headSub" class="head-sub"></span>
+      </div>
+      <div class="head-actions">
+        <button id="homeBtn" class="icon-btn" title="Back to events" hidden>
+          <svg viewBox="0 0 24 24" width="15" height="15"><path d="M3 11l9-7 9 7M5 10v10h5v-6h4v6h5V10"
+            fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button id="refreshBtn" class="icon-btn" title="Refresh">
+          <svg viewBox="0 0 24 24" width="15" height="15"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button id="settingsBtn" class="icon-btn" title="Settings">
+          <svg viewBox="0 0 24 24" width="15" height="15"><circle cx="12" cy="12" r="3" fill="none"
+            stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+            fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Main list view -->
+    <div id="mainView">
+      <div id="meetBanner" class="meet-banner" hidden></div>
+      <div id="list" class="list"></div>
+      <div id="presetRow" class="preset-row" hidden></div>
+      <div id="presetEditor" class="preset-editor" hidden>
+        <input id="npLabel" type="text" placeholder="Label" />
+        <input id="npText" type="text" placeholder="Event text, e.g. Gym session" />
+        <button id="npSave" class="np-save">Save</button>
+        <button id="npCancel" class="np-cancel" title="Cancel" aria-label="Cancel">✕</button>
+      </div>
+      <div id="addBar" class="add-bar" hidden>
+        <input id="quickAdd" type="text" placeholder="Add an event in plain English…" />
+        <span id="addSpin" class="add-spin" hidden></span>
+        <button id="addBtn" class="add-send" title="Add event (or press Enter)" aria-label="Add event">
+          <svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 5v14M5 12h14"
+            fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div id="addHint" class="add-hint" hidden>e.g. “Dentist Tuesday 3pm”, “Lunch with Sam Fri noon” — press Enter</div>
+      <div id="toast" class="toast" hidden></div>
+    </div>
+
+    <!-- Event/task detail popup -->
+    <div id="detail" class="detail" hidden>
+      <div class="detail-card">
+        <button id="detailClose" class="detail-close" title="Close" aria-label="Close">✕</button>
+        <div id="detailColor" class="detail-color"></div>
+        <h3 id="detailTitle"></h3>
+        <div id="detailMeta" class="detail-meta"></div>
+        <div id="detailDesc" class="detail-desc" hidden></div>
+        <div class="detail-actions">
+          <button id="detailDone" class="detail-done">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings view -->
+    <div id="settings" class="settings" hidden>
+      <div class="settings-body">
+        <!-- Disconnected: connect flow -->
+        <div id="connectBox">
+          <p class="hint">
+            Connect your Google account to read and create events.
+            <a id="setupHelp" href="#">How to get a Client ID ›</a>
+          </p>
+          <div id="helpSteps" class="help-steps" hidden>
+            <ol>
+              <li>Go to <a href="#" data-ext="https://console.cloud.google.com/projectcreate">Cloud Console</a> → create a project.</li>
+              <li>Enable the <a href="#" data-ext="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com">Google Calendar API</a> (and <a href="#" data-ext="https://console.cloud.google.com/apis/library/tasks.googleapis.com">Tasks API</a>).</li>
+              <li>OAuth consent screen → <b>External</b> → add your email as a test user. Then set publishing status to <b>In production</b> (so logins don't expire weekly).</li>
+              <li><a href="#" data-ext="https://console.cloud.google.com/apis/credentials">Credentials</a> → Create credentials → OAuth client ID → <b>Desktop app</b>.</li>
+              <li>Copy the <b>Client ID</b> and <b>Client secret</b> below.</li>
+            </ol>
+          </div>
+          <label class="field-label">Client ID</label>
+          <input id="clientId" type="text" placeholder="…apps.googleusercontent.com" />
+          <label class="field-label">Client secret</label>
+          <input id="clientSecret" type="password" placeholder="GOCSPX-…" />
+          <button id="connectBtn" class="big-btn">Connect Google</button>
+        </div>
+
+        <!-- Connected: account + preferences -->
+        <div id="accountBox" hidden>
+          <div class="account-row">
+            <span class="dot-ok"></span>
+            <span id="accountEmail" class="email"></span>
+            <button id="disconnectBtn" class="text-btn danger">Disconnect</button>
+          </div>
+          <div class="section-label">Calendars</div>
+          <div id="calToggles" class="cal-toggles"></div>
+          <label class="checkbox-row">
+            <input id="showTasks" type="checkbox" /> Show Google Tasks
+          </label>
+
+          <div class="section-label">Quick-add presets</div>
+          <p class="sub-hint">Tap a preset to fill the add box, then type the time and press Enter.
+            Tip: include a fixed time in the text if it's always the same.</p>
+          <div id="presetList" class="preset-list"></div>
+          <div class="preset-add">
+            <input id="presetLabel" type="text" placeholder="Label" />
+            <input id="presetText" type="text" placeholder="Event text, e.g. Tutoring at Seneca…" />
+            <button id="presetAddBtn" class="text-btn primary">Add</button>
+          </div>
+          <div class="setting-row">
+            <label for="lookaheadDays">Show next</label>
+            <input id="lookaheadDays" type="number" min="1" max="60" /> <span>days ahead</span>
+          </div>
+          <div class="setting-row">
+            <label for="meetLeadMins">Meeting alert</label>
+            <input id="meetLeadMins" type="number" min="1" max="60" /> <span>min before</span>
+          </div>
+          <div class="setting-row">
+            <label for="refreshMins">Refresh every</label>
+            <input id="refreshMins" type="number" min="1" max="120" /> <span>min</span>
+          </div>
+        </div>
+
+        <label class="checkbox-row" style="margin-top:12px">
+          <input id="openAtLogin" type="checkbox" /> Start automatically at login
+        </label>
+        <p id="settingsErr" class="err" hidden></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
