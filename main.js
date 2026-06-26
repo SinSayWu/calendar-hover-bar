@@ -530,13 +530,15 @@ ipcMain.handle('update-event', async (_e, { calendarId, id, patch }) => {
   }
 });
 
-ipcMain.handle('add-task', async (_e, { title }) => {
+ipcMain.handle('add-task', async (_e, { title, due }) => {
   const auth = authedClient();
   if (!auth) return { error: 'Not connected.' };
   if (!title || !title.trim()) return { error: 'Empty.' };
   try {
     const t = google.tasks({ version: 'v1', auth });
-    await t.tasks.insert({ tasklist: '@default', requestBody: { title: title.trim() } });
+    const body = { title: title.trim() };
+    if (due) body.due = due; // RFC3339; Google Tasks uses the date portion
+    await t.tasks.insert({ tasklist: '@default', requestBody: body });
     await refreshItems();
     return { ok: true };
   } catch (e) {

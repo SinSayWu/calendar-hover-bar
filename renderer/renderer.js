@@ -334,28 +334,43 @@ quickAdd.addEventListener('blur', () => { addHint.hidden = true; });
 
 const modeEvent = document.getElementById('modeEvent');
 const modeTask = document.getElementById('modeTask');
+const taskDueRow = document.getElementById('taskDueRow');
+const taskDue = document.getElementById('taskDue');
 function setAddMode(m) {
   addMode = m;
   modeEvent.classList.toggle('active', m === 'event');
   modeTask.classList.toggle('active', m === 'task');
   quickAdd.placeholder = m === 'task' ? 'Add a task…' : 'Add an event in plain English…';
+  taskDueRow.hidden = m !== 'task';
   addHint.hidden = true;
   renderPresets(); // presets are event-only; hidden in task mode
 }
 modeEvent.addEventListener('click', () => setAddMode('event'));
 modeTask.addEventListener('click', () => setAddMode('task'));
+document.getElementById('taskDueClear').addEventListener('click', () => { taskDue.value = ''; quickAdd.focus(); });
 
 async function submitAdd() {
   const text = quickAdd.value.trim();
   if (!text) { quickAdd.focus(); return; }
   addSpin.hidden = false;
   quickAdd.disabled = true;
-  const r = addMode === 'task' ? await window.api.addTask(text) : await window.api.addEvent(text);
+  let r;
+  if (addMode === 'task') {
+    const due = taskDue.value ? new Date(taskDue.value).toISOString() : null;
+    r = await window.api.addTask(text, due);
+  } else {
+    r = await window.api.addEvent(text);
+  }
   quickAdd.disabled = false;
   addSpin.hidden = true;
   quickAdd.focus();
-  if (r && r.ok) { quickAdd.value = ''; showToast(addMode === 'task' ? 'Task added ✓' : 'Added ✓'); }
-  else { showToast((r && r.error) ? 'Failed: ' + r.error : 'Could not add', true); }
+  if (r && r.ok) {
+    quickAdd.value = '';
+    if (addMode === 'task') taskDue.value = '';
+    showToast(addMode === 'task' ? 'Task added ✓' : 'Added ✓');
+  } else {
+    showToast((r && r.error) ? 'Failed: ' + r.error : 'Could not add', true);
+  }
 }
 
 let toastTimer = null;
