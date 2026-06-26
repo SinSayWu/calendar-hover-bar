@@ -49,9 +49,13 @@ const efStart = document.getElementById('efStart');
 const efEnd = document.getElementById('efEnd');
 const efLoc = document.getElementById('efLoc');
 const efDesc = document.getElementById('efDesc');
+const detailTools = document.getElementById('detailTools');
+const detailDeleteBtn = document.getElementById('detailDeleteBtn');
+const detailConvertBtn = document.getElementById('detailConvertBtn');
 
 const pad = (n) => String(n).padStart(2, '0');
 const toDateInput = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const dateOnlyISO = (d) => new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString();
 const toDateTimeInput = (d) => `${toDateInput(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 function addDaysStr(s, n) {
   const [y, m, d] = s.split('-').map(Number);
@@ -484,7 +488,10 @@ function openDetail(it) {
   // Always start in read-only view.
   detailView.hidden = false;
   detailEdit.hidden = true;
+  detailTools.hidden = false;
   detailEditBtn.hidden = it.type !== 'event';
+  detailConvertBtn.textContent = it.type === 'event' ? 'Change to task' : 'Change to event';
+  disarmDetailDelete();
 
   document.getElementById('detailColor').style.background = it.color || 'var(--accent)';
 
@@ -542,11 +549,13 @@ function enterEditMode() {
   applyEditDates(it);
   detailView.hidden = true;
   detailEdit.hidden = false;
+  detailTools.hidden = true; // hide quick-action icons while editing
   requestAnimationFrame(positionPanel);
 }
 function exitEditMode() {
   detailEdit.hidden = true;
   detailView.hidden = false;
+  detailTools.hidden = false;
   requestAnimationFrame(positionPanel);
 }
 // Toggle between date and datetime-local inputs, preserving the date part.
@@ -596,6 +605,45 @@ async function saveEdit() {
 detailEditBtn.addEventListener('click', enterEditMode);
 document.getElementById('efCancel').addEventListener('click', exitEditMode);
 document.getElementById('efSave').addEventListener('click', saveEdit);
+
+// Delete from the popup — click once to arm, again to confirm.
+let detailDelTimer = null;
+function disarmDetailDelete() {
+  detailDeleteBtn.classList.remove('armed');
+  detailDeleteBtn.title = 'Delete';
+  clearTimeout(detailDelTimer);
+}
+detailDeleteBtn.addEventListener('click', async () => {
+  const it = currentDetail;
+  if (!it) return;
+  if (!detailDeleteBtn.classList.contains('armed')) {
+    detailDeleteBtn.classList.add('armed');
+    detailDeleteBtn.title = 'Click again to delete';
+    detailDelTimer = setTimeout(disarmDetailDelete, 3000);
+    return;
+  }
+  disarmDetailDelete();
+  const r = it.type === 'event'
+    ? await window.api.deleteEvent(it.calendarId, it.id)
+    : await window.api.deleteTask(it.tasklist, it.id);
+  if (r && r.ok) { closeDetail(); showToast('Deleted'); }
+  else showToast((r && r.error) ? 'Failed: ' + r.error : 'Could not delete', true);
+});
+
+// Convert event <-> task.
+detailConvertBtn.addEventListener('click', async () => {
+  const it = currentDetail;
+  if (!it) return;
+  let r;
+  if (it.type === 'event') {
+    r = await window.api.convertToTask(it.calendarId, it.id, it.title === '(no title)' ? '' : it.title, dateOnlyISO(new Date(it.start)));
+  } else {
+    const date = toDateInput(it.due ? new Date(it.due) : new Date());
+    r = await window.api.convertToEvent(it.tasklist, it.id, it.title, date);
+  }
+  if (r && r.ok) { closeDetail(); showToast(it.type === 'event' ? 'Changed to task ✓' : 'Changed to event ✓'); }
+  else showToast((r && r.error) ? 'Failed: ' + r.error : 'Could not change', true);
+});
 
 document.getElementById('detailClose').addEventListener('click', closeDetail);
 document.getElementById('detailDone').addEventListener('click', closeDetail);

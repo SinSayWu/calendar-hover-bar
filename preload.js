@@ -18,7 +18,10 @@ contextBridge.exposeInMainWorld('api', {
   addTask: (title, due) => ipcRenderer.invoke('add-task', { title, due }),
   updateEvent: (calendarId, id, patch) => ipcRenderer.invoke('update-event', { calendarId, id, patch }),
   deleteEvent: (calendarId, id) => ipcRenderer.invoke('delete-event', { calendarId, id }),
+  deleteTask: (tasklist, id) => ipcRenderer.invoke('delete-task', { tasklist, id }),
   completeTask: (tasklist, id) => ipcRenderer.invoke('complete-task', { tasklist, id }),
+  convertToTask: (calendarId, eventId, title, due) => ipcRenderer.invoke('convert-to-task', { calendarId, eventId, title, due }),
+  convertToEvent: (tasklist, taskId, title, date) => ipcRenderer.invoke('convert-to-event', { tasklist, taskId, title, date }),
 
   // Items (events + tasks)
   getItems: () => ipcRenderer.invoke('get-items'),

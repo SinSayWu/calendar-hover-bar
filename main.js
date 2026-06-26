@@ -517,6 +517,63 @@ ipcMain.handle('delete-event', async (_e, { calendarId, id }) => {
   }
 });
 
+function nextDayStr(s) {
+  const [y, m, d] = s.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + 1);
+  return dt.toISOString().slice(0, 10);
+}
+
+ipcMain.handle('delete-task', async (_e, { tasklist, id }) => {
+  const auth = authedClient();
+  if (!auth) return { error: 'Not connected.' };
+  try {
+    const t = google.tasks({ version: 'v1', auth });
+    await t.tasks.delete({ tasklist: tasklist || '@default', task: id });
+    await refreshItems();
+    return { ok: true };
+  } catch (e) {
+    return { error: e.message || String(e) };
+  }
+});
+
+// Convert an event into a task (title + due = event's start date), then delete the event.
+ipcMain.handle('convert-to-task', async (_e, { calendarId, eventId, title, due }) => {
+  const auth = authedClient();
+  if (!auth) return { error: 'Not connected.' };
+  try {
+    const t = google.tasks({ version: 'v1', auth });
+    const body = { title: title || '(no title)' };
+    if (due) body.due = due;
+    await t.tasks.insert({ tasklist: '@default', requestBody: body });
+    const cal = google.calendar({ version: 'v3', auth });
+    await cal.events.delete({ calendarId: calendarId || 'primary', eventId });
+    await refreshItems();
+    return { ok: true };
+  } catch (e) {
+    return { error: e.message || String(e) };
+  }
+});
+
+// Convert a task into an all-day event on `date` (YYYY-MM-DD), then delete the task.
+ipcMain.handle('convert-to-event', async (_e, { tasklist, taskId, title, date }) => {
+  const auth = authedClient();
+  if (!auth) return { error: 'Not connected.' };
+  try {
+    const cal = google.calendar({ version: 'v3', auth });
+    await cal.events.insert({
+      calendarId: 'primary',
+      requestBody: { summary: title || '(no title)', start: { date }, end: { date: nextDayStr(date) } }
+    });
+    const t = google.tasks({ version: 'v1', auth });
+    await t.tasks.delete({ tasklist: tasklist || '@default', task: taskId });
+    await refreshItems();
+    return { ok: true };
+  } catch (e) {
+    return { error: e.message || String(e) };
+  }
+});
+
 ipcMain.handle('update-event', async (_e, { calendarId, id, patch }) => {
   const auth = authedClient();
   if (!auth) return { error: 'Not connected.' };

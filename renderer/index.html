@@ -80,7 +80,17 @@
     <!-- Event/task detail popup -->
     <div id="detail" class="detail" hidden>
       <div class="detail-card">
-        <button id="detailClose" class="detail-close" title="Close" aria-label="Close">✕</button>
+        <div id="detailTools" class="detail-tools">
+          <button id="detailEditBtn" class="dt-icon" title="Edit" aria-label="Edit" hidden>
+            <svg viewBox="0 0 24 24" width="15" height="15"><path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3z"
+              fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button id="detailDeleteBtn" class="dt-icon danger" title="Delete" aria-label="Delete">
+            <svg viewBox="0 0 24 24" width="15" height="15"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m1 0v12a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V7"
+              fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button id="detailClose" class="dt-icon" title="Close" aria-label="Close">✕</button>
+        </div>
 
         <!-- Read-only view -->
         <div id="detailView">
@@ -89,7 +99,7 @@
           <div id="detailMeta" class="detail-meta"></div>
           <div id="detailDesc" class="detail-desc" hidden></div>
           <div class="detail-actions">
-            <button id="detailEditBtn" class="detail-edit-btn" hidden>Edit</button>
+            <button id="detailConvertBtn" class="detail-convert">Change to task</button>
             <button id="detailDone" class="detail-done">Close</button>
           </div>
         </div>
