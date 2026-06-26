@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('api', {
   getCalendars: () => ipcRenderer.invoke('get-calendars'),
   setCalendarEnabled: (id, enabled) => ipcRenderer.invoke('set-calendar-enabled', { id, enabled }),
   addEvent: (text) => ipcRenderer.invoke('add-event', text),
+  addTask: (title) => ipcRenderer.invoke('add-task', { title }),
+  updateEvent: (calendarId, id, patch) => ipcRenderer.invoke('update-event', { calendarId, id, patch }),
   deleteEvent: (calendarId, id) => ipcRenderer.invoke('delete-event', { calendarId, id }),
   completeTask: (tasklist, id) => ipcRenderer.invoke('complete-task', { tasklist, id }),
 

@@ -31,11 +31,34 @@ let dragging = false;
 let settingsOpen = false;
 let detailOpen = false;
 let imminentMeeting = null;
+let currentDetail = null;
+let addMode = 'event';
 
 const detailEl = document.getElementById('detail');
 const ICON_CLOCK = `<svg viewBox="0 0 24 24" width="13" height="13"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`;
 const ICON_PIN = `<svg viewBox="0 0 24 24" width="13" height="13"><path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="10" r="2.3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>`;
 const ICON_CAL = `<svg viewBox="0 0 24 24" width="13" height="13"><rect x="3.5" y="5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`;
+
+// Detail edit-form refs
+const detailView = document.getElementById('detailView');
+const detailEdit = document.getElementById('detailEdit');
+const detailEditBtn = document.getElementById('detailEditBtn');
+const efTitle = document.getElementById('efTitle');
+const efAllDay = document.getElementById('efAllDay');
+const efStart = document.getElementById('efStart');
+const efEnd = document.getElementById('efEnd');
+const efLoc = document.getElementById('efLoc');
+const efDesc = document.getElementById('efDesc');
+
+const pad = (n) => String(n).padStart(2, '0');
+const toDateInput = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const toDateTimeInput = (d) => `${toDateInput(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+function addDaysStr(s, n) {
+  const [y, m, d] = s.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + n);
+  return toDateInput(dt);
+}
 
 const GAP = 8, EDGE = 8, HIT_PAD = 10;
 
@@ -70,7 +93,7 @@ function applyConnectedUi() {
 function renderPresets() {
   const presets = cfg.presets || [];
   const connected = !!(cfg.google && cfg.google.connected);
-  if (!connected || lastPayload.needsAuth) {
+  if (!connected || lastPayload.needsAuth || addMode === 'task') {
     presetRow.hidden = true;
     presetRow.innerHTML = '';
     presetEditor.hidden = true;
@@ -306,20 +329,33 @@ settingsEl.addEventListener('click', (e) => {
 // Quick add
 quickAdd.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitAdd(); });
 addBtn.addEventListener('click', submitAdd);
-quickAdd.addEventListener('focus', () => { addHint.hidden = false; });
+quickAdd.addEventListener('focus', () => { addHint.hidden = addMode === 'task'; });
 quickAdd.addEventListener('blur', () => { addHint.hidden = true; });
+
+const modeEvent = document.getElementById('modeEvent');
+const modeTask = document.getElementById('modeTask');
+function setAddMode(m) {
+  addMode = m;
+  modeEvent.classList.toggle('active', m === 'event');
+  modeTask.classList.toggle('active', m === 'task');
+  quickAdd.placeholder = m === 'task' ? 'Add a task…' : 'Add an event in plain English…';
+  addHint.hidden = true;
+  renderPresets(); // presets are event-only; hidden in task mode
+}
+modeEvent.addEventListener('click', () => setAddMode('event'));
+modeTask.addEventListener('click', () => setAddMode('task'));
 
 async function submitAdd() {
   const text = quickAdd.value.trim();
   if (!text) { quickAdd.focus(); return; }
   addSpin.hidden = false;
   quickAdd.disabled = true;
-  const r = await window.api.addEvent(text);
+  const r = addMode === 'task' ? await window.api.addTask(text) : await window.api.addEvent(text);
   quickAdd.disabled = false;
   addSpin.hidden = true;
   quickAdd.focus();
-  if (r && r.ok) { quickAdd.value = ''; showToast('Added ✓'); }
-  else { showToast((r && r.error) ? 'Failed: ' + r.error : 'Could not add event', true); }
+  if (r && r.ok) { quickAdd.value = ''; showToast(addMode === 'task' ? 'Task added ✓' : 'Added ✓'); }
+  else { showToast((r && r.error) ? 'Failed: ' + r.error : 'Could not add', true); }
 }
 
 let toastTimer = null;
@@ -428,7 +464,12 @@ function setDesc(el, raw) {
 function openDetail(it) {
   if (!it) return;
   detailOpen = true;
+  currentDetail = it;
   forceExpand();
+  // Always start in read-only view.
+  detailView.hidden = false;
+  detailEdit.hidden = true;
+  detailEditBtn.hidden = it.type !== 'event';
 
   document.getElementById('detailColor').style.background = it.color || 'var(--accent)';
 
@@ -461,7 +502,86 @@ function openDetail(it) {
 function closeDetail() {
   detailOpen = false;
   detailEl.hidden = true;
+  currentDetail = null;
 }
+
+// ---- Edit an event ----
+function applyEditDates(it) {
+  if (it.allDay) {
+    efStart.type = 'date'; efEnd.type = 'date';
+    efStart.value = toDateInput(new Date(it.start));
+    efEnd.value = toDateInput(new Date(new Date(it.end).getTime() - 86400000)); // inclusive last day
+  } else {
+    efStart.type = 'datetime-local'; efEnd.type = 'datetime-local';
+    efStart.value = toDateTimeInput(new Date(it.start));
+    efEnd.value = toDateTimeInput(new Date(it.end));
+  }
+}
+function enterEditMode() {
+  const it = currentDetail;
+  if (!it || it.type !== 'event') return;
+  efTitle.value = it.title === '(no title)' ? '' : it.title;
+  efLoc.value = it.location || '';
+  efDesc.value = htmlToText(it.description || '');
+  efAllDay.checked = !!it.allDay;
+  applyEditDates(it);
+  detailView.hidden = true;
+  detailEdit.hidden = false;
+  requestAnimationFrame(positionPanel);
+}
+function exitEditMode() {
+  detailEdit.hidden = true;
+  detailView.hidden = false;
+  requestAnimationFrame(positionPanel);
+}
+// Toggle between date and datetime-local inputs, preserving the date part.
+efAllDay.addEventListener('change', () => {
+  if (efAllDay.checked) {
+    const sv = efStart.value ? efStart.value.slice(0, 10) : '';
+    const ev = efEnd.value ? efEnd.value.slice(0, 10) : sv;
+    efStart.type = 'date'; efEnd.type = 'date';
+    efStart.value = sv; efEnd.value = ev;
+  } else {
+    const sv = efStart.value ? efStart.value + 'T09:00' : '';
+    const ev = efEnd.value ? efEnd.value + 'T10:00' : '';
+    efStart.type = 'datetime-local'; efEnd.type = 'datetime-local';
+    efStart.value = sv; efEnd.value = ev;
+  }
+});
+async function saveEdit() {
+  const it = currentDetail;
+  if (!it) return;
+  const patch = {
+    summary: efTitle.value.trim(),
+    location: efLoc.value.trim()
+  };
+  // Only touch the description if it actually changed (avoids overwriting any
+  // original HTML formatting with our plain-text rendering).
+  if (efDesc.value !== htmlToText(it.description || '')) patch.description = efDesc.value;
+
+  if (efAllDay.checked) {
+    if (!efStart.value) { showToast('Enter a start date', true); return; }
+    const endDay = efEnd.value || efStart.value;
+    patch.start = { date: efStart.value };
+    patch.end = { date: addDaysStr(endDay, 1) }; // Google all-day end is exclusive
+  } else {
+    if (!efStart.value || !efEnd.value) { showToast('Enter start and end times', true); return; }
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    patch.start = { dateTime: new Date(efStart.value).toISOString(), timeZone: tz };
+    patch.end = { dateTime: new Date(efEnd.value).toISOString(), timeZone: tz };
+  }
+
+  const btn = document.getElementById('efSave');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const r = await window.api.updateEvent(it.calendarId, it.id, patch);
+  btn.disabled = false; btn.textContent = 'Save changes';
+  if (r && r.ok) { closeDetail(); showToast('Saved ✓'); }
+  else { showToast((r && r.error) ? 'Failed: ' + r.error : 'Could not save', true); }
+}
+detailEditBtn.addEventListener('click', enterEditMode);
+document.getElementById('efCancel').addEventListener('click', exitEditMode);
+document.getElementById('efSave').addEventListener('click', saveEdit);
+
 document.getElementById('detailClose').addEventListener('click', closeDetail);
 document.getElementById('detailDone').addEventListener('click', closeDetail);
 detailEl.addEventListener('click', (e) => { if (e.target === detailEl) closeDetail(); });

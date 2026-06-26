@@ -55,12 +55,18 @@
         <button id="npCancel" class="np-cancel" title="Cancel" aria-label="Cancel">✕</button>
       </div>
       <div id="addBar" class="add-bar" hidden>
-        <input id="quickAdd" type="text" placeholder="Add an event in plain English…" />
-        <span id="addSpin" class="add-spin" hidden></span>
-        <button id="addBtn" class="add-send" title="Add event (or press Enter)" aria-label="Add event">
-          <svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 5v14M5 12h14"
-            fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
-        </button>
+        <div class="add-mode">
+          <button id="modeEvent" class="mode-btn active" type="button">Event</button>
+          <button id="modeTask" class="mode-btn" type="button">Task</button>
+        </div>
+        <div class="add-input-row">
+          <input id="quickAdd" type="text" placeholder="Add an event in plain English…" />
+          <span id="addSpin" class="add-spin" hidden></span>
+          <button id="addBtn" class="add-send" title="Add (or press Enter)" aria-label="Add">
+            <svg viewBox="0 0 24 24" width="15" height="15"><path d="M12 5v14M5 12h14"
+              fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
       </div>
       <div id="addHint" class="add-hint" hidden>e.g. “Dentist Tuesday 3pm”, “Lunch with Sam Fri noon” — press Enter</div>
       <div id="toast" class="toast" hidden></div>
@@ -70,12 +76,36 @@
     <div id="detail" class="detail" hidden>
       <div class="detail-card">
         <button id="detailClose" class="detail-close" title="Close" aria-label="Close">✕</button>
-        <div id="detailColor" class="detail-color"></div>
-        <h3 id="detailTitle"></h3>
-        <div id="detailMeta" class="detail-meta"></div>
-        <div id="detailDesc" class="detail-desc" hidden></div>
-        <div class="detail-actions">
-          <button id="detailDone" class="detail-done">Close</button>
+
+        <!-- Read-only view -->
+        <div id="detailView">
+          <div id="detailColor" class="detail-color"></div>
+          <h3 id="detailTitle"></h3>
+          <div id="detailMeta" class="detail-meta"></div>
+          <div id="detailDesc" class="detail-desc" hidden></div>
+          <div class="detail-actions">
+            <button id="detailEditBtn" class="detail-edit-btn" hidden>Edit</button>
+            <button id="detailDone" class="detail-done">Close</button>
+          </div>
+        </div>
+
+        <!-- Edit form (events only) -->
+        <div id="detailEdit" hidden>
+          <label class="ef-label">Title</label>
+          <input id="efTitle" type="text" />
+          <label class="ef-check"><input id="efAllDay" type="checkbox" /> All day</label>
+          <div class="ef-grid">
+            <div><label class="ef-label">Starts</label><input id="efStart" type="datetime-local" /></div>
+            <div><label class="ef-label">Ends</label><input id="efEnd" type="datetime-local" /></div>
+          </div>
+          <label class="ef-label">Location</label>
+          <input id="efLoc" type="text" />
+          <label class="ef-label">Description</label>
+          <textarea id="efDesc" rows="3"></textarea>
+          <div class="detail-actions">
+            <button id="efSave" class="detail-done primary">Save changes</button>
+            <button id="efCancel" class="detail-done">Cancel</button>
+          </div>
         </div>
       </div>
     </div>

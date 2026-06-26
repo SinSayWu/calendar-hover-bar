@@ -517,6 +517,33 @@ ipcMain.handle('delete-event', async (_e, { calendarId, id }) => {
   }
 });
 
+ipcMain.handle('update-event', async (_e, { calendarId, id, patch }) => {
+  const auth = authedClient();
+  if (!auth) return { error: 'Not connected.' };
+  try {
+    const cal = google.calendar({ version: 'v3', auth });
+    await cal.events.patch({ calendarId: calendarId || 'primary', eventId: id, requestBody: patch });
+    await refreshItems();
+    return { ok: true };
+  } catch (e) {
+    return { error: e.message || String(e) };
+  }
+});
+
+ipcMain.handle('add-task', async (_e, { title }) => {
+  const auth = authedClient();
+  if (!auth) return { error: 'Not connected.' };
+  if (!title || !title.trim()) return { error: 'Empty.' };
+  try {
+    const t = google.tasks({ version: 'v1', auth });
+    await t.tasks.insert({ tasklist: '@default', requestBody: { title: title.trim() } });
+    await refreshItems();
+    return { ok: true };
+  } catch (e) {
+    return { error: e.message || String(e) };
+  }
+});
+
 ipcMain.handle('complete-task', async (_e, { tasklist, id }) => {
   const auth = authedClient();
   if (!auth) return { error: 'Not connected.' };
